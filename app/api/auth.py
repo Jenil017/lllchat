@@ -21,7 +21,7 @@ async def register(
     db: AsyncSession = Depends(get_db),
 ) -> User:
     """
-    Register a new user.
+    Register a new user and send OTP verification email.
 
     Args:
         user_data: User registration data.
@@ -33,6 +33,9 @@ async def register(
     Raises:
         HTTPException: If email or username already exists.
     """
+    from app.services.otp_service import otp_service
+    from app.services.email_service import email_service
+
     try:
         user = await register_user(
             db,
@@ -40,6 +43,12 @@ async def register(
             email=user_data.email,
             password=user_data.password,
         )
+
+        # Auto-send OTP email after registration
+        otp_code = otp_service.generate_otp()
+        await otp_service.store_otp(user.email, otp_code)
+        email_service.send_otp_email(user.email, otp_code)
+
         return user
     except ValueError as e:
         raise HTTPException(
@@ -56,6 +65,8 @@ async def login(
     """
     Login and receive JWT access token.
 
+    Only verified users can login.
+
     Args:
         credentials: Login credentials.
         db: Database session.
@@ -64,7 +75,7 @@ async def login(
         JWT access token.
 
     Raises:
-        HTTPException: If credentials are invalid.
+        HTTPException: If credentials are invalid or email not verified.
     """
     user = await authenticate_user(db, credentials.email, credentials.password)
 
@@ -73,6 +84,13 @@ async def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Check if email is verified
+    if not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please verify your email before logging in. Check your inbox for OTP code.",
         )
 
     access_token = create_access_token(user.id)

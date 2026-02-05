@@ -26,19 +26,27 @@
                         maxlength="50">
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" id="emailField">
                     <label for="email">Email</label>
                     <input type="email" id="email" placeholder="Enter your email" required>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" id="passwordField">
                     <label for="password">Password</label>
                     <input type="password" id="password" placeholder="Enter password (min 8 chars)" minlength="8"
                         required>
                 </div>
 
+                <div id="otpField" class="form-group" style="display: none;">
+                    <p class="info-message">Successfully registered! Please enter the OTP sent to your email.</p>
+                    <label for="otp">OTP Verification Code</label>
+                    <input type="text" id="otp" placeholder="Enter 6-digit OTP" minlength="6" maxlength="6">
+                    <button type="button" id="resendBtn" class="link-btn">Resend OTP</button>
+                </div>
+
                 <button type="submit" id="authSubmit" class="btn-primary">Login</button>
                 <div id="authError" class="error-message"></div>
+                <div id="authSuccess" class="success-message"></div>
             </form>
         </div>
     </div>

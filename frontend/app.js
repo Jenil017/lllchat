@@ -20,6 +20,7 @@ const authTitle = document.getElementById('authTitle');
 const authSubmit = document.getElementById('authSubmit');
 const usernameField = document.getElementById('usernameField');
 const authError = document.getElementById('authError');
+const authSuccess = document.getElementById('authSuccess');
 const messagesContainer = document.getElementById('messagesContainer');
 const messageInput = document.getElementById('messageInput');
 const sendBtn = document.getElementById('sendBtn');
@@ -33,7 +34,16 @@ const mobileMenuToggle = document.getElementById('mobileMenuToggle');
 const mobileOverlay = document.getElementById('mobileOverlay');
 const sidebar = document.querySelector('.sidebar');
 
+// New OTP elements
+const emailField = document.getElementById('emailField');
+const passwordField = document.getElementById('passwordField');
+const otpField = document.getElementById('otpField');
+const otpInput = document.getElementById('otp');
+const resendBtn = document.getElementById('resendBtn');
+
 let isLoginMode = true;
+let isVerificationMode = false;
+let pendingEmail = '';
 
 // Initialize App
 function init() {
@@ -54,6 +64,9 @@ function setupEventListeners() {
 
     // Auth form
     authForm.addEventListener('submit', handleAuth);
+
+    // Resend OTP
+    resendBtn.addEventListener('click', handleResendOTP);
 
     // Message input
     messageInput.addEventListener('keypress', (e) => {
@@ -102,22 +115,49 @@ function closeMobileMenu() {
 // Auth UI Functions
 function switchToLogin() {
     isLoginMode = true;
+    isVerificationMode = false;
     loginTab.classList.add('active');
     registerTab.classList.remove('active');
     authTitle.textContent = 'Login';
     authSubmit.textContent = 'Login';
     usernameField.style.display = 'none';
+    emailField.style.display = 'block';
+    passwordField.style.display = 'block';
+    otpField.style.display = 'none';
     document.getElementById('username').removeAttribute('required');
+    document.getElementById('email').setAttribute('required', 'required');
+    document.getElementById('password').setAttribute('required', 'required');
+    otpInput.removeAttribute('required');
 }
 
 function switchToRegister() {
     isLoginMode = false;
+    isVerificationMode = false;
     registerTab.classList.add('active');
     loginTab.classList.remove('active');
     authTitle.textContent = 'Register';
     authSubmit.textContent = 'Register';
     usernameField.style.display = 'block';
+    emailField.style.display = 'block';
+    passwordField.style.display = 'block';
+    otpField.style.display = 'none';
     document.getElementById('username').setAttribute('required', 'required');
+    document.getElementById('email').setAttribute('required', 'required');
+    document.getElementById('password').setAttribute('required', 'required');
+    otpInput.removeAttribute('required');
+}
+
+function switchToVerification(email) {
+    isVerificationMode = true;
+    pendingEmail = email;
+    authTitle.textContent = 'Verify Email';
+    authSubmit.textContent = 'Verify OTP';
+    usernameField.style.display = 'none';
+    emailField.style.display = 'none';
+    passwordField.style.display = 'none';
+    otpField.style.display = 'block';
+    otpInput.setAttribute('required', 'required');
+    otpInput.value = '';
 }
 
 function showAuthModal() {
@@ -133,9 +173,21 @@ function hideAuthModal() {
 function showError(message) {
     authError.textContent = message;
     authError.classList.add('show');
+    if (authSuccess) authSuccess.classList.remove('show');
     setTimeout(() => {
         authError.classList.remove('show');
     }, 5000);
+}
+
+function showSuccess(message) {
+    if (authSuccess) {
+        authSuccess.textContent = message;
+        authSuccess.classList.add('show');
+        authError.classList.remove('show');
+        setTimeout(() => {
+            authSuccess.classList.remove('show');
+        }, 5000);
+    }
 }
 
 // Authentication
@@ -145,9 +197,12 @@ async function handleAuth(e) {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     const username = document.getElementById('username').value;
+    const otp = otpInput.value;
 
     try {
-        if (isLoginMode) {
+        if (isVerificationMode) {
+            await verifyOTP(pendingEmail, otp);
+        } else if (isLoginMode) {
             await login(email, password);
         } else {
             await register(username, email, password);
@@ -169,8 +224,46 @@ async function register(username, email, password) {
         throw new Error(error.detail || 'Registration failed');
     }
 
-    // Auto login after successful registration
-    await login(email, password);
+    const data = await response.json();
+    switchToVerification(data.email);
+    showSuccess('Registration successful! Please check your email for the OTP.');
+}
+
+async function verifyOTP(email, otp) {
+    const response = await fetch(`${API_BASE_URL}/auth/verify-otp?email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otp)}`, {
+        method: 'POST'
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Verification failed');
+    }
+
+    const data = await response.json();
+    token = data.access_token;
+    localStorage.setItem('jwt_token', token);
+
+    await loadCurrentUser();
+    showSuccess('Email verified successfully!');
+}
+
+async function handleResendOTP() {
+    if (!pendingEmail) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/send-otp?email=${encodeURIComponent(pendingEmail)}`, {
+            method: 'POST'
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to resend OTP');
+        }
+
+        showSuccess('New OTP sent to your email.');
+    } catch (error) {
+        showError(error.message);
+    }
 }
 
 async function login(email, password) {
@@ -182,6 +275,13 @@ async function login(email, password) {
 
     if (!response.ok) {
         const error = await response.json();
+
+        // Handle unverified user
+        if (response.status === 403 && error.detail.includes('verify')) {
+            switchToVerification(email);
+            throw new Error(error.detail);
+        }
+
         throw new Error(error.detail || 'Login failed');
     }
 

@@ -139,6 +139,48 @@ body {
     display: block;
 }
 
+.success-message {
+    margin-top: 15px;
+    padding: 10px;
+    background: #e6ffed;
+    color: #28a745;
+    border-radius: 8px;
+    font-size: 14px;
+    display: none;
+    text-align: center;
+}
+
+.success-message.show {
+    display: block;
+}
+
+.info-message {
+    margin-top: 10px;
+    margin-bottom: 20px;
+    padding: 12px;
+    background: #e3f2fd;
+    color: #1976d2;
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.link-btn {
+    background: none;
+    border: none;
+    color: #667eea;
+    text-decoration: underline;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 5px;
+    margin-top: 5px;
+    display: block;
+}
+
+.link-btn:hover {
+    color: #764ba2;
+}
+
 /* Main Chat Container */
 .container {
     display: flex;
