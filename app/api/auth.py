@@ -94,3 +94,110 @@ async def get_current_user_info(
         Current user object.
     """
     return current_user
+
+
+@router.post("/send-otp")
+async def send_otp(
+    email: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Send OTP verification code to email.
+
+    Args:
+        email: Email address to send OTP
+        db: Database session
+
+    Returns:
+        Success message
+
+    Raises:
+        HTTPException: If user not found or email sending fails
+    """
+    from app.services.auth_service import get_user_by_email
+    from app.services.otp_service import otp_service
+    from app.services.email_service import email_service
+
+    # Check if user exists
+    user = await get_user_by_email(db, email)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Check if already verified
+    if user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already verified",
+        )
+
+    # Generate and store OTP
+    otp_code = otp_service.generate_otp()
+    await otp_service.store_otp(email, otp_code)
+
+    # Send OTP email
+    email_sent = email_service.send_otp_email(email, otp_code)
+
+    if not email_sent:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send OTP email",
+        )
+
+    return {"message": "OTP sent successfully", "email": email}
+
+
+@router.post("/verify-otp")
+async def verify_otp(
+    email: str,
+    otp: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Verify OTP code and mark user as verified.
+
+    Args:
+        email: Email address
+        otp: 6-digit OTP code
+        db: Database session
+
+    Returns:
+        Success message and token
+
+    Raises:
+        HTTPException: If OTP is invalid or user not found
+    """
+    from app.services.auth_service import get_user_by_email, mark_user_verified
+    from app.services.otp_service import otp_service
+
+    # Verify OTP
+    is_valid = await otp_service.verify_otp(email, otp)
+
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OTP",
+        )
+
+    # Get user
+    user = await get_user_by_email(db, email)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Mark user as verified
+    await mark_user_verified(db, user.id)
+
+    # Generate access token
+    access_token = create_access_token(user.id)
+
+    return {
+        "message": "Email verified successfully",
+        "verified": True,
+        "access_token": access_token,
+        "token_type": "bearer",
+    }

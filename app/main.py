@@ -79,6 +79,13 @@ async def startup_event():
     ps_module.presence_service = PresenceService(redis_client)
     logger.info("Presence service initialized")
 
+    # Initialize OTP service
+    import app.services.otp_service as otp_module
+    from app.services.otp_service import OTPService
+
+    otp_module.otp_service = OTPService(redis_client)
+    logger.info("OTP service initialized")
+
     logger.info("Application startup complete")
 
 

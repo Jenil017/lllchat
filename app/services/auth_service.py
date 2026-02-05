@@ -125,3 +125,25 @@ async def authenticate_user(
         return None
 
     return user
+
+
+async def mark_user_verified(db: AsyncSession, user_id: UUID) -> bool:
+    """
+    Mark a user as verified.
+
+    Args:
+        db: Database session.
+        user_id: User's unique identifier.
+
+    Returns:
+        True if successful.
+    """
+    user = await get_user_by_id(db, user_id)
+
+    if not user:
+        return False
+
+    user.is_verified = True
+    await db.flush()
+
+    return True

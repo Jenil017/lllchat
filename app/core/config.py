@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
 
+    # Gmail SMTP Configuration (Free - No Credit Card!)
+    SMTP_EMAIL: str = ""
+    SMTP_PASSWORD: str = ""  # Gmail App Password
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

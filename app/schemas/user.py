@@ -15,6 +15,7 @@ class UserResponse(BaseModel):
     created_at: datetime
     last_seen: datetime | None
     is_active: bool
+    is_verified: bool
 
     model_config = {"from_attributes": True}
 
