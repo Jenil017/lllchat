@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realtime Chat App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- Auth Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <h2 id="authTitle">Login</h2>
+
+            <div class="tab-buttons">
+                <button id="loginTab" class="tab-btn active">Login</button>
+                <button id="registerTab" class="tab-btn">Register</button>
+            </div>
+
+            <form id="authForm">
+                <div id="usernameField" class="form-group" style="display: none;">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" placeholder="Enter username (3-50 chars)" minlength="3"
+                        maxlength="50">
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" placeholder="Enter your email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Enter password (min 8 chars)" minlength="8"
+                        required>
+                </div>
+
+                <button type="submit" id="authSubmit" class="btn-primary">Login</button>
+                <div id="authError" class="error-message"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Chat Container -->
+    <div id="chatContainer" class="container" style="display: none;">
+        <!-- Mobile Menu Toggle -->
+        <button id="mobileMenuToggle" class="mobile-menu-toggle">☰</button>
+        <div id="mobileOverlay" class="mobile-overlay"></div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>💬 Chat App</h1>
+                <div class="user-info">
+                    <span id="currentUsername">User</span>
+                </div>
+            </div>
+
+            <div class="online-users">
+                <h3>Online Users (<span id="onlineCount">0</span>)</h3>
+                <ul id="usersList"></ul>
+            </div>
+
+            <button id="logoutBtn" class="btn-logout">Logout</button>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="chat-area">
+            <div class="chat-header">
+                <h2>Global Chat</h2>
+                <div id="connectionStatus" class="status-indicator">●</div>
+            </div>
+
+            <div id="messagesContainer" class="messages"></div>
+
+            <div id="typingIndicator" class="typing-indicator"></div>
+
+            <div class="message-input">
+                <input type="text" id="messageInput" placeholder="Type your message..." maxlength="2000"
+                    autocomplete="off">
+                <button id="sendBtn" class="btn-send">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
