@@ -1,6 +1,6 @@
 // Configuration
-const API_BASE_URL = 'http://localhost:8000';
-const WS_BASE_URL = 'ws://localhost:8000';
+const API_BASE_URL = 'https://lllchat.onrender.com';
+const WS_BASE_URL = 'wss://lllchat.onrender.com';
 
 // State
 let socket = null;
