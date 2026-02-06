@@ -103,11 +103,21 @@ async def shutdown_event():
     logger.info("Application shutdown complete")
 
 
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
+
+# Get the path to the frontend directory
+frontend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
+
 # Include routers
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(messages.router)
 app.include_router(websocket.router)
+
+# Serve static files from the frontend directory
+app.mount("/static", StaticFiles(directory=frontend_path), name="static")
 
 
 @app.get("/health")
@@ -122,9 +132,22 @@ async def health_check():
 
 @app.get("/")
 async def root():
-    """Root endpoint."""
-    return {
-        "message": "FastAPI Realtime Chat Backend",
-        "version": settings.APP_VERSION,
-        "docs": "/docs",
-    }
+    """Serve the frontend index.html at the root path."""
+    return FileResponse(os.path.join(frontend_path, "index.html"))
+
+
+# Add a catch-all to serve the frontend for any other GET requests (for SPA routing if needed)
+@app.get("/{full_path:path}")
+async def serve_frontend(full_path: str):
+    # Only serve the frontend if the path doesn't start with common API prefixes
+    if full_path.split("/")[0] not in [
+        "auth",
+        "users",
+        "messages",
+        "ws",
+        "docs",
+        "redoc",
+        "openapi.json",
+        "static",
+    ]:
+        return FileResponse(os.path.join(frontend_path, "index.html"))

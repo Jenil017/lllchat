@@ -1,6 +1,6 @@
 // Configuration
-const API_BASE_URL = 'https://lllchat.onrender.com';
-const WS_BASE_URL = 'wss://lllchat.onrender.com';
+const API_BASE_URL = `${window.location.protocol}//${window.location.host}`;
+const WS_BASE_URL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;
 
 // State
 let socket = null;
@@ -23,16 +23,13 @@ const authError = document.getElementById('authError');
 const authSuccess = document.getElementById('authSuccess');
 const messagesContainer = document.getElementById('messagesContainer');
 const messageInput = document.getElementById('messageInput');
-const sendBtn = document.getElementById('sendBtn');
+const sendBtn = document.getElementById('sendBtnIcon'); // Updated
 const logoutBtn = document.getElementById('logoutBtn');
 const usersList = document.getElementById('usersList');
 const onlineCount = document.getElementById('onlineCount');
-const currentUsername = document.getElementById('currentUsername');
+const activeCountText = document.getElementById('activeCountText');
+const currentUsernameDisplay = document.getElementById('currentUsernameDisplay');
 const typingIndicator = document.getElementById('typingIndicator');
-const connectionStatus = document.getElementById('connectionStatus');
-const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-const mobileOverlay = document.getElementById('mobileOverlay');
-const sidebar = document.querySelector('.sidebar');
 
 // New OTP elements
 const emailField = document.getElementById('emailField');
@@ -86,30 +83,6 @@ function setupEventListeners() {
 
     // Logout
     logoutBtn.addEventListener('click', logout);
-
-    // Mobile menu toggle
-    if (mobileMenuToggle) {
-        mobileMenuToggle.addEventListener('click', toggleMobileMenu);
-    }
-
-    if (mobileOverlay) {
-        mobileOverlay.addEventListener('click', closeMobileMenu);
-    }
-}
-
-// Mobile Menu Functions
-function toggleMobileMenu() {
-    if (sidebar) {
-        sidebar.classList.toggle('show');
-        mobileOverlay.classList.toggle('show');
-    }
-}
-
-function closeMobileMenu() {
-    if (sidebar) {
-        sidebar.classList.remove('show');
-        mobileOverlay.classList.remove('show');
-    }
 }
 
 // Auth UI Functions
@@ -124,10 +97,6 @@ function switchToLogin() {
     emailField.style.display = 'block';
     passwordField.style.display = 'block';
     otpField.style.display = 'none';
-    document.getElementById('username').removeAttribute('required');
-    document.getElementById('email').setAttribute('required', 'required');
-    document.getElementById('password').setAttribute('required', 'required');
-    otpInput.removeAttribute('required');
 }
 
 function switchToRegister() {
@@ -141,10 +110,6 @@ function switchToRegister() {
     emailField.style.display = 'block';
     passwordField.style.display = 'block';
     otpField.style.display = 'none';
-    document.getElementById('username').setAttribute('required', 'required');
-    document.getElementById('email').setAttribute('required', 'required');
-    document.getElementById('password').setAttribute('required', 'required');
-    otpInput.removeAttribute('required');
 }
 
 function switchToVerification(email) {
@@ -156,7 +121,6 @@ function switchToVerification(email) {
     emailField.style.display = 'none';
     passwordField.style.display = 'none';
     otpField.style.display = 'block';
-    otpInput.setAttribute('required', 'required');
     otpInput.value = '';
 }
 
@@ -275,13 +239,10 @@ async function login(email, password) {
 
     if (!response.ok) {
         const error = await response.json();
-
-        // Handle unverified user
         if (response.status === 403 && error.detail.includes('verify')) {
             switchToVerification(email);
             throw new Error(error.detail);
         }
-
         throw new Error(error.detail || 'Login failed');
     }
 
@@ -307,7 +268,11 @@ async function loadCurrentUser() {
         }
 
         currentUser = await response.json();
-        currentUsername.textContent = `@${currentUser.username}`;
+        currentUsernameDisplay.textContent = currentUser.username;
+
+        // Set user avatar in sidebar
+        const avatarContainer = document.getElementById('userAvatarContainer');
+        avatarContainer.innerHTML = `<img src="https://i.pravatar.cc/150?u=${currentUser.username}" alt="${currentUser.username}">`;
 
         hideAuthModal();
         await loadMessages();
@@ -349,14 +314,10 @@ async function loadMessages() {
         }
 
         const data = await response.json();
-
         messagesContainer.innerHTML = '';
-
-        // Display messages in reverse order (oldest first)
         data.messages.reverse().forEach(msg => {
             displayMessage(msg);
         });
-
         scrollToBottom();
 
     } catch (error) {
@@ -365,37 +326,36 @@ async function loadMessages() {
 }
 
 function displayMessage(msg) {
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'message';
-
-    if (currentUser && msg.user_id === currentUser.id) {
-        messageDiv.classList.add('own');
-    }
+    const isOwn = currentUser && msg.user_id === currentUser.id;
+    const wrapper = document.createElement('div');
+    wrapper.className = `message-wrapper ${isOwn ? 'own' : ''}`;
 
     const time = new Date(msg.created_at).toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit'
     });
 
-    messageDiv.innerHTML = `
-        <div class="message-bubble">
-            <div class="message-header">
-                <span class="message-username">${msg.username}</span>
-                <span class="message-time">${time}</span>
+    wrapper.innerHTML = `
+        <div class="user-avatar-small">
+            <img src="https://i.pravatar.cc/100?u=${msg.username}" alt="${msg.username}">
+        </div>
+        <div class="message-content-wrapper">
+            <div class="message-info">
+                <span class="msg-username">${msg.username}</span>
+                <span class="msg-time">${time}</span>
             </div>
-            <div class="message-content">${escapeHtml(msg.content)}</div>
+            <div class="message-bubble">
+                ${escapeHtml(msg.content)}
+            </div>
         </div>
     `;
 
-    messagesContainer.appendChild(messageDiv);
+    messagesContainer.appendChild(wrapper);
 }
 
 function sendMessage() {
     const content = messageInput.value.trim();
-
-    if (!content || !socket || socket.readyState !== WebSocket.OPEN) {
-        return;
-    }
+    if (!content || !socket || socket.readyState !== WebSocket.OPEN) return;
 
     socket.send(JSON.stringify({
         event: 'send_message',
@@ -406,16 +366,10 @@ function sendMessage() {
 }
 
 function sendTypingIndicator() {
-    if (typingTimeout) {
-        clearTimeout(typingTimeout);
-    }
-
+    if (typingTimeout) clearTimeout(typingTimeout);
     typingTimeout = setTimeout(() => {
         if (socket && socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({
-                event: 'typing',
-                data: {}
-            }));
+            socket.send(JSON.stringify({ event: 'typing', data: {} }));
         }
     }, 300);
 }
@@ -424,14 +378,9 @@ function sendTypingIndicator() {
 async function loadOnlineUsers() {
     try {
         const response = await fetch(`${API_BASE_URL}/users/online`);
-
-        if (!response.ok) {
-            throw new Error('Failed to load online users');
-        }
-
+        if (!response.ok) throw new Error('Failed to load online users');
         const users = await response.json();
         updateOnlineUsers(users);
-
     } catch (error) {
         console.error('Error loading online users:', error);
     }
@@ -440,32 +389,30 @@ async function loadOnlineUsers() {
 function updateOnlineUsers(users) {
     usersList.innerHTML = '';
     onlineCount.textContent = users.length;
+    activeCountText.textContent = users.length;
 
     users.forEach(user => {
-        const li = document.createElement('li');
-        li.textContent = user.username;
-        usersList.appendChild(li);
+        const div = document.createElement('div');
+        div.className = 'user-list-item';
+        div.innerHTML = `
+            <div class="user-avatar-small">
+                <img src="https://i.pravatar.cc/100?u=${user.username}" alt="${user.username}">
+                <div class="status-dot"></div>
+            </div>
+            <span>${user.username}</span>
+        `;
+        usersList.appendChild(div);
     });
 }
 
 // WebSocket
 function connectWebSocket() {
-    if (socket) {
-        socket.close();
-    }
-
-    updateConnectionStatus(false);
-
+    if (socket) socket.close();
     socket = new WebSocket(`${WS_BASE_URL}/ws/chat?token=${token}`);
 
     socket.onopen = () => {
         console.log('WebSocket connected');
-        updateConnectionStatus(true);
-
-        // Start heartbeat
-        if (heartbeatInterval) {
-            clearInterval(heartbeatInterval);
-        }
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
         heartbeatInterval = setInterval(() => {
             if (socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ event: 'ping', data: {} }));
@@ -482,92 +429,38 @@ function connectWebSocket() {
         }
     };
 
-    socket.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        updateConnectionStatus(false);
-    };
-
     socket.onclose = () => {
-        console.log('WebSocket disconnected');
-        updateConnectionStatus(false);
-
-        if (heartbeatInterval) {
-            clearInterval(heartbeatInterval);
-        }
-
-        // Auto reconnect after 3 seconds
         if (token && currentUser) {
-            reconnectTimeout = setTimeout(() => {
-                console.log('Attempting to reconnect...');
-                connectWebSocket();
-            }, 3000);
+            setTimeout(connectWebSocket, 3000);
         }
     };
 }
 
 function handleWebSocketMessage(message) {
     const { event, data } = message;
-
     switch (event) {
         case 'new_message':
             displayMessage(data);
             scrollToBottom();
             break;
-
-        case 'message_edited':
-            // Update message UI (simplified - just reload for now)
-            console.log('Message edited:', data);
-            break;
-
-        case 'message_deleted':
-            // Remove message from UI (simplified - just log for now)
-            console.log('Message deleted:', data);
-            break;
-
         case 'user_joined':
-            loadOnlineUsers();
-            break;
-
         case 'user_left':
             loadOnlineUsers();
             break;
-
         case 'user_typing':
             showTypingIndicator(data.username);
             break;
-
-        case 'pong':
-            // Heartbeat response - ignore
-            break;
-
         case 'error':
-            console.error('WebSocket error:', data.message);
             alert(data.message);
             break;
-
-        default:
-            console.log('Unknown event:', event, data);
     }
 }
 
 function showTypingIndicator(username) {
     typingIndicator.textContent = `${username} is typing...`;
-
     setTimeout(() => {
         typingIndicator.textContent = '';
     }, 3000);
-}
-
-function updateConnectionStatus(connected) {
-    if (connected) {
-        connectionStatus.classList.remove('disconnected');
-        connectionStatus.title = 'Connected';
-        sendBtn.disabled = false;
-    } else {
-        connectionStatus.classList.add('disconnected');
-        connectionStatus.title = 'Disconnected - Reconnecting...';
-        sendBtn.disabled = true;
-    }
 }
 
 // Utility Functions
@@ -581,5 +474,14 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Initialize app when DOM is ready
+function stringToColor(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+    return '#' + '00000'.substring(0, 6 - c.length) + c;
+}
+
+// Initialize app
 document.addEventListener('DOMContentLoaded', init);
