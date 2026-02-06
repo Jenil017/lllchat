@@ -16,10 +16,8 @@ services:
           name: chat-db
           property: connectionString
       - key: REDIS_URL
-        fromService:
-          type: redis
-          name: chat-redis
-          property: connectionString
+        sync: false
+        placeholder: "Enter your Redis URL (e.g. from Upstash)"
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_ALGORITHM
