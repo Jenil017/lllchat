@@ -1,8 +1,6 @@
 """FastAPI main application."""
 
 import logging
-
-import redis.asyncio as redis
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -42,7 +40,7 @@ app.add_middleware(
 )
 
 # Global Redis client
-redis_client: redis.Redis = None
+redis_client = None
 
 
 @app.on_event("startup")
@@ -52,26 +50,23 @@ async def startup_event():
 
     logger.info("Starting up application...")
 
-    # Initialize Redis client
-    redis_url = settings.REDIS_URL.strip()
-    if not redis_url.startswith(("redis://", "rediss://", "unix://")):
-        logger.error(
-            f"Invalid REDIS_URL format. It must start with 'redis://' or 'rediss://'. Current value: {redis_url[:10]}..."
-        )
-        # Provide a dummy client or raise a more helpful error
+    # Initialize Upstash Redis REST client
+    from upstash_redis import Redis
+
+    if not settings.UPSTASH_REDIS_REST_URL or not settings.UPSTASH_REDIS_REST_TOKEN:
+        logger.error("UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must be set")
         raise ValueError(
-            f"REDIS_URL must start with 'redis://' or 'rediss://'. Please check your Render Environment variables."
+            "Missing Upstash Redis credentials. Please set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN environment variables."
         )
 
-    redis_client = redis.from_url(
-        redis_url,
-        encoding="utf-8",
-        decode_responses=False,
+    redis_client = Redis(
+        url=settings.UPSTASH_REDIS_REST_URL, token=settings.UPSTASH_REDIS_REST_TOKEN
     )
 
     # Test Redis connection
     try:
-        await redis_client.ping()
+        # Upstash Redis client's ping is synchronous
+        redis_client.ping()
         logger.info("Redis connection successful")
     except Exception as e:
         logger.error(f"Redis connection failed: {e}")
@@ -102,14 +97,7 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on application shutdown."""
-    global redis_client
-
     logger.info("Shutting down application...")
-
-    if redis_client:
-        await redis_client.close()
-        logger.info("Redis connection closed")
-
     logger.info("Application shutdown complete")
 
 

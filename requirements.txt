@@ -4,6 +4,7 @@ sqlalchemy[asyncio]
 asyncpg
 alembic
 redis
+upstash-redis
 python-jose[cryptography]
 passlib[bcrypt]
 bcrypt==4.3.0

@@ -4,7 +4,7 @@ import time
 from typing import Optional
 from uuid import UUID
 
-import redis.asyncio as redis
+from upstash_redis import Redis
 
 from app.core.config import settings
 
@@ -16,12 +16,12 @@ class RateLimiter:
     Implements a sliding window algorithm to limit actions per time period.
     """
 
-    def __init__(self, redis_client: redis.Redis):
+    def __init__(self, redis_client: Redis):
         """
         Initialize rate limiter with Redis client.
 
         Args:
-            redis_client: Async Redis client instance.
+            redis_client: Upstash Redis client instance.
         """
         self.redis = redis_client
         self.window_size = 5  # seconds
@@ -58,19 +58,19 @@ class RateLimiter:
         window_start = now - self.window_size
 
         # Remove old entries outside the window
-        await self.redis.zremrangebyscore(key, 0, window_start)
+        self.redis.zremrangebyscore(key, 0, window_start)
 
         # Count requests in current window
-        request_count = await self.redis.zcard(key)
+        request_count = self.redis.zcard(key)
 
         if request_count >= self.max_requests:
             return False
 
         # Add current request to the window
-        await self.redis.zadd(key, {str(now): now})
+        self.redis.zadd(key, {str(now): now})
 
         # Set expiration to clean up old keys
-        await self.redis.expire(key, self.window_size * 2)
+        self.redis.expire(key, self.window_size * 2)
 
         return True
 
@@ -85,7 +85,7 @@ class RateLimiter:
             action: Action to reset rate limit for.
         """
         key = self._get_key(user_id, action)
-        await self.redis.delete(key)
+        self.redis.delete(key)
 
 
 # Global rate limiter instance (will be initialized in main.py)

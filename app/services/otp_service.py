@@ -3,13 +3,13 @@
 import random
 import string
 from typing import Optional
-import redis.asyncio as redis
+from upstash_redis import Redis
 
 
 class OTPService:
-    """Service for managing OTP codes with Redis."""
+    """Service for managing OTP codes with Upstash Redis."""
 
-    def __init__(self, redis_client: redis.Redis):
+    def __init__(self, redis_client: Redis):
         """Initialize OTP service with Redis client."""
         self.redis = redis_client
         self.otp_expiry = 300  # 5 minutes in seconds
@@ -40,7 +40,7 @@ class OTPService:
         """
         try:
             key = f"otp:{email}"
-            await self.redis.setex(key, self.otp_expiry, otp)
+            self.redis.setex(key, self.otp_expiry, otp)
             return True
         except Exception as e:
             print(f"Error storing OTP: {e}")
@@ -59,19 +59,15 @@ class OTPService:
         """
         try:
             key = f"otp:{email}"
-            stored_otp = await self.redis.get(key)
+            stored_otp = self.redis.get(key)
 
             if stored_otp is None:
                 return False
 
-            # Decode if bytes
-            if isinstance(stored_otp, bytes):
-                stored_otp = stored_otp.decode("utf-8")
-
             # Verify OTP matches
             if stored_otp == otp:
                 # Delete OTP after successful verification
-                await self.redis.delete(key)
+                self.redis.delete(key)
                 return True
 
             return False
@@ -92,7 +88,7 @@ class OTPService:
         """
         try:
             key = f"otp:{email}"
-            await self.redis.delete(key)
+            self.redis.delete(key)
             return True
         except Exception as e:
             print(f"Error deleting OTP: {e}")

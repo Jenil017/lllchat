@@ -9,8 +9,9 @@ class Settings(BaseSettings):
     # Database Configuration
     DATABASE_URL: str
 
-    # Redis Configuration
-    REDIS_URL: str
+    # Upstash Redis REST API Configuration
+    UPSTASH_REDIS_REST_URL: str = ""
+    UPSTASH_REDIS_REST_TOKEN: str = ""
 
     # JWT Configuration
     JWT_SECRET: str

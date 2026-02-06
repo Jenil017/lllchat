@@ -14,9 +14,12 @@ services:
       - key: DATABASE_URL
         sync: false
         placeholder: "Enter your PostgreSQL URL"
-      - key: REDIS_URL
+      - key: UPSTASH_REDIS_REST_URL
         sync: false
-        placeholder: "Enter your Redis URL (from Upstash)"
+        placeholder: "Enter your Upstash REST URL (from Upstash Console)"
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+        placeholder: "Enter your Upstash REST Token (from Upstash Console)"
       - key: SMTP_EMAIL
         sync: false
         placeholder: "Your Gmail address"
