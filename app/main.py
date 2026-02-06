@@ -53,8 +53,18 @@ async def startup_event():
     logger.info("Starting up application...")
 
     # Initialize Redis client
+    redis_url = settings.REDIS_URL.strip()
+    if not redis_url.startswith(("redis://", "rediss://", "unix://")):
+        logger.error(
+            f"Invalid REDIS_URL format. It must start with 'redis://' or 'rediss://'. Current value: {redis_url[:10]}..."
+        )
+        # Provide a dummy client or raise a more helpful error
+        raise ValueError(
+            f"REDIS_URL must start with 'redis://' or 'rediss://'. Please check your Render Environment variables."
+        )
+
     redis_client = redis.from_url(
-        settings.REDIS_URL,
+        redis_url,
         encoding="utf-8",
         decode_responses=False,
     )
