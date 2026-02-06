@@ -17,7 +17,13 @@ services:
           property: connectionString
       - key: REDIS_URL
         sync: false
-        placeholder: "Enter your Redis URL (e.g. from Upstash)"
+        placeholder: "Enter your Redis URL (from Upstash)"
+      - key: SMTP_EMAIL
+        sync: false
+        placeholder: "Your Gmail address"
+      - key: SMTP_PASSWORD
+        sync: false
+        placeholder: "Your Gmail App Password"
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_ALGORITHM
